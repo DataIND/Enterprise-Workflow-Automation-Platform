@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
+from app.db import models as _models  # noqa: F401 — register ORM mappers
 
 engine = create_async_engine(settings.DATABASE_URL, echo=True, future=True)
 

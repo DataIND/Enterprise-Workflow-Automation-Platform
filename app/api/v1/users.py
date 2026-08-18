@@ -45,6 +45,9 @@ async def delete_account(
 
 
 @router.get("/search", response_model=list[UserResponse])
-async def search_users(keyword: str, db: AsyncSession = Depends(get_db)):
-
+async def search_users(
+    keyword: str,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user),
+):
     return await UserService.search(db, keyword)

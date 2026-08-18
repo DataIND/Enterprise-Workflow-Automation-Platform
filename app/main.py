@@ -32,7 +32,11 @@ from app.middleware.rate_limit_middleware import RateLimitMiddleware
 
 # Monitoring
 
+from sqlalchemy import text
+
 from prometheus_fastapi_instrumentator import Instrumentator
+
+from app.db.session import engine
 
 # =====================================================
 # Application Life Cycle
@@ -166,10 +170,17 @@ async def root():
 
 @app.get("/health")
 async def health_check():
+    database = "disconnected"
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        database = "connected"
+    except Exception:
+        database = "disconnected"
 
     return {
-        "status": "healthy",
-        "database": "connected",
-        "redis": "connected",
-        "rabbitmq": "connected",
+        "status": "healthy" if database == "connected" else "unhealthy",
+        "database": database,
+        "redis": "not_checked",
+        "rabbitmq": "not_checked",
     }
