@@ -1,7 +1,10 @@
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.permissions import require_org_role
 from app.db.models.workflow import Workflow
 from app.repositories.workflow_repository import WorkflowRepository
+from app.utils.enums import UserRole
 
 
 class WorkflowService:
@@ -28,16 +31,32 @@ class WorkflowService:
         workflow = await WorkflowRepository.get_by_id(db, workflow_id)
 
         if not workflow:
-            raise HTTPException(status_code=404, detail="Workflow not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Workflow not found",
+            )
 
         return workflow
 
     @staticmethod
-    async def update_workflow(db, workflow_id, payload):
+    async def get_workflow_for_user(
+        db,
+        workflow_id: int,
+        user_id: int,
+        minimum_role: UserRole = UserRole.MEMBER,
+    ) -> Workflow:
+        """Load a workflow and verify the caller's role in its organization."""
 
         workflow = await WorkflowService.get_workflow(db, workflow_id)
 
-        update_data = payload.dict(exclude_unset=True)
+        await require_org_role(db, user_id, workflow.organization_id, minimum_role)
+
+        return workflow
+
+    @staticmethod
+    async def update_workflow(db, workflow: Workflow, payload):
+
+        update_data = payload.model_dump(exclude_unset=True)
 
         for key, value in update_data.items():
             setattr(workflow, key, value)
@@ -48,9 +67,7 @@ class WorkflowService:
         return workflow
 
     @staticmethod
-    async def delete_workflow(db, workflow_id):
-
-        workflow = await WorkflowService.get_workflow(db, workflow_id)
+    async def delete_workflow(db, workflow: Workflow):
 
         await WorkflowRepository.delete(db, workflow)
 

@@ -14,6 +14,10 @@ from app.api.v1.organizations import router as organization_router
 
 from app.api.v1.workflows import router as workflow_router
 
+from app.api.v1.workflow_actions import router as workflow_action_router
+
+from app.api.v1.workflow_conditions import router as workflow_condition_router
+
 from app.api.v1.events import router as event_router
 
 from app.api.v1.executions import router as execution_router
@@ -128,6 +132,12 @@ app.include_router(organization_router, prefix=API_PREFIX)
 
 
 app.include_router(workflow_router, prefix=API_PREFIX)
+
+
+app.include_router(workflow_action_router, prefix=API_PREFIX)
+
+
+app.include_router(workflow_condition_router, prefix=API_PREFIX)
 
 
 app.include_router(event_router, prefix=API_PREFIX)

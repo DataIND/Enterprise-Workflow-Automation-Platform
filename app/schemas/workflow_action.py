@@ -1,15 +1,26 @@
-from typing import Dict, Any
+from typing import Any, Dict
 
 from pydantic import BaseModel
+
+from app.utils.enums import ActionType
 
 
 class WorkflowActionCreate(BaseModel):
 
-    action_type: str
+    action_type: ActionType
 
     config: Dict[str, Any]
 
     execution_order: int = 1
+
+
+class WorkflowActionUpdate(BaseModel):
+
+    action_type: ActionType | None = None
+
+    config: Dict[str, Any] | None = None
+
+    execution_order: int | None = None
 
 
 class WorkflowActionResponse(BaseModel):

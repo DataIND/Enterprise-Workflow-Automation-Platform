@@ -1,5 +1,8 @@
 from datetime import datetime
+
 from pydantic import BaseModel
+
+from app.utils.enums import UserRole
 
 
 class OrganizationCreate(BaseModel):
@@ -22,4 +25,19 @@ class OrganizationResponse(BaseModel):
 
 class InviteUserRequest(BaseModel):
     user_id: int
+    role: UserRole = UserRole.MEMBER
+
+
+class MembershipRoleUpdate(BaseModel):
+    role: UserRole
+
+
+class MembershipResponse(BaseModel):
+    id: int
+    user_id: int
+    organization_id: int
     role: str
+    joined_at: datetime
+
+    class Config:
+        from_attributes = True
