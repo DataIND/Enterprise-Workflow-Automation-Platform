@@ -9,11 +9,17 @@ class ExecutionResponse(BaseModel):
 
     workflow_id: int
 
+    event_id: str | None
+
     status: str
+
+    error_message: str | None
 
     retry_count: int
 
     started_at: datetime
+
+    completed_at: datetime | None
 
     class Config:
 

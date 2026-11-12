@@ -1,19 +1,25 @@
-from app.events.publisher import RabbitMQPublisher
+import uuid
+from datetime import datetime
+
+from app.events.async_publisher import AsyncEventPublisher
 
 
 class EventService:
 
-    EVENT_QUEUE = "workflow_events"
-
     @staticmethod
-    async def publish_event(payload):
-
-        event_data = {
+    def build_envelope(payload) -> dict:
+        return {
+            "event_id": payload.event_id or str(uuid.uuid4()),
             "event_type": payload.event_type,
             "organization_id": payload.organization_id,
             "payload": payload.payload,
+            "published_at": datetime.utcnow().isoformat(),
         }
 
-        RabbitMQPublisher.publish(queue=EventService.EVENT_QUEUE, message=event_data)
+    @staticmethod
+    async def publish_event(payload) -> dict:
+        envelope = EventService.build_envelope(payload)
 
-        return {"message": "Event published"}
+        await AsyncEventPublisher.publish(envelope)
+
+        return envelope
