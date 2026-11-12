@@ -23,14 +23,30 @@ services:
       start_period: 30s
     restart: unless-stopped
 
-  celery_worker:
+  event_consumer:
     build: .
-    container_name: workflow_celery_worker
-    command: celery -A app.workers.celery_app worker --loglevel=info
+    container_name: workflow_event_consumer
+    command: python -m app.events.consumer
     env_file:
       - .env
     depends_on:
-      postgres:
+      # Waits on api so the schema is migrated before events are handled.
+      api:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  celery_worker:
+    build: .
+    container_name: workflow_celery_worker
+    command: celery -A app.workers.celery_app worker --loglevel=info -Q celery,email_queue,webhook_queue,retry_queue
+    env_file:
+      - .env
+    depends_on:
+      api:
         condition: service_healthy
       redis:
         condition: service_healthy
