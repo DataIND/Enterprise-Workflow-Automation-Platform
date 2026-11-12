@@ -13,6 +13,7 @@ email-validator
 redis
 celery
 pika
+aio-pika
 httpx
 requests
 websockets

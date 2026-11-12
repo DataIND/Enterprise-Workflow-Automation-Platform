@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -42,24 +44,45 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.db.session import engine
 
+from app.events.async_publisher import AsyncEventPublisher
+
+from app.websocket.redis_bridge import run_subscriber
+
 # =====================================================
 # Application Life Cycle
 # =====================================================
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
-    print("Starting Enterprise Workflow Platform...")
+    logger.info("Starting Enterprise Workflow Platform...")
 
-    # startup tasks:
-    # database connection check
-    # redis check
-    # rabbitmq check
+    # One shared RabbitMQ connection for the whole process. A broker that is
+    # still starting is not fatal: publishing reconnects on demand.
+    try:
+        await AsyncEventPublisher.connect()
+    except Exception:
+        logger.warning("RabbitMQ unavailable at startup", exc_info=True)
 
-    yield
+    # Forwards execution updates published by workers to local WebSockets.
+    subscriber = asyncio.create_task(run_subscriber())
 
-    print("Shutting down Enterprise Workflow Platform...")
+    try:
+        yield
+    finally:
+        subscriber.cancel()
+
+        try:
+            await subscriber
+        except (asyncio.CancelledError, Exception):
+            pass
+
+        await AsyncEventPublisher.close()
+
+        logger.info("Shutting down Enterprise Workflow Platform...")
 
 
 # =====================================================
