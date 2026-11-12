@@ -1,26 +1,48 @@
-import pika
+"""Blocking publisher used by Celery workers and the consumer process.
+
+The API must not use this; it publishes through
+:class:`app.events.async_publisher.AsyncEventPublisher` instead.
+"""
+
 import json
 
+import pika
 
 from app.core.config import settings
+from app.events.topology import declare_topology
 
 
 class RabbitMQPublisher:
 
     @staticmethod
-    def publish(queue: str, message: dict):
-
+    def publish(
+        message: dict,
+        exchange: str = "",
+        routing_key: str | None = None,
+        queue: str | None = None,
+    ) -> None:
         connection = pika.BlockingConnection(pika.URLParameters(settings.RABBITMQ_URL))
 
-        channel = connection.channel()
+        try:
+            channel = connection.channel()
+            declare_topology(channel)
 
-        channel.queue_declare(queue=queue, durable=True)
+            channel.basic_publish(
+                exchange=exchange,
+                routing_key=routing_key or queue or "",
+                body=json.dumps(message, default=str),
+                properties=pika.BasicProperties(
+                    delivery_mode=pika.DeliveryMode.Persistent,
+                    content_type="application/json",
+                ),
+            )
+        finally:
+            connection.close()
 
-        channel.basic_publish(
-            exchange="",
-            routing_key=queue,
-            body=json.dumps(message),
-            properties=pika.BasicProperties(delivery_mode=2),
+    @staticmethod
+    def publish_dead_letter(message: dict) -> None:
+        RabbitMQPublisher.publish(
+            message,
+            exchange=settings.DEAD_LETTER_EXCHANGE,
+            routing_key=settings.DEAD_LETTER_QUEUE,
         )
-
-        connection.close()

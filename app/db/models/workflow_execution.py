@@ -1,6 +1,13 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Integer,
+    JSON,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -8,11 +15,16 @@ from app.db.base import Base
 
 class WorkflowExecution(Base):
     __tablename__ = "workflow_executions"
+    __table_args__ = (
+        UniqueConstraint("workflow_id", "event_id", name="uq_execution_workflow_event"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     workflow_id: Mapped[int] = mapped_column(
         ForeignKey("workflows.id"), nullable=False, index=True
     )
+    # Idempotency key: one execution per (workflow, event).
+    event_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(50), default="PENDING")
     event_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
     error_message: Mapped[str | None] = mapped_column(nullable=True)
